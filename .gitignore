@@ -1,0 +1,36 @@
+# Python
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.log
+*.db
+*.sqlite3
+
+# Environment variables (sensitive)
+.env
+.env.local
+.env.production
+
+# Node.js (frontend)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/package-lock.json
+frontend/pnpm-lock.yaml
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Data files (optional)
+*.csv
+*.json
+*.pkl

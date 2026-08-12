@@ -1,0 +1,96 @@
+[OPTIMIZE] Called with SQL: SELECT * FROM stackoverflow.users
+[OPTIMIZE] Dataset: stackoverflow
+[OPTIMIZE] Schema tables: ['badges', 'comments', 'post_history', 'post_links', 'posts_answers', 'posts_questions', 'tags', 'users', 'votes']
+[OPTIMIZE] Parsed successfully
+[OPTIMIZE] Looking for SELECT * ...
+[OPTIMIZE] Found SELECT *
+[OPTIMIZE] No WHERE clause found
+[OPTIMIZE] Tables in query: ['users']
+[OPTIMIZE] Knowledge Catalog available
+[OPTIMIZE] Error getting columns from KC: 'DataplexServiceClient' object has no attribute 'get_entity'
+[OPTIMIZE] Using fallback date keyword detection
+[OPTIMIZE] Found date column: creation_date
+[OPTIMIZE] Added WHERE on creation_date
+[OPTIMIZE] Added LIMIT 1000
+[OPTIMIZE] Optimized SQL: SELECT * FROM stackoverflow.users WHERE creation_date > NOW() - INTERVAL '30' DAY LIMIT 1000
+[OPTIMIZE] Modifications: ["Added WHERE on creation_date > NOW() - INTERVAL '30 days'", 'Added LIMIT 1000']
+[OPTIMIZE] Called with SQL: SELECT * FROM stackoverflow.users
+[OPTIMIZE] Dataset: stackoverflow
+[OPTIMIZE] Schema tables: ['badges', 'comments', 'post_history', 'post_links', 'posts_answers', 'posts_questions', 'tags', 'users', 'votes']
+[OPTIMIZE] Parsed successfully
+[OPTIMIZE] Looking for SELECT * ...
+[OPTIMIZE] Found SELECT *
+[OPTIMIZE] No WHERE clause found
+[OPTIMIZE] Tables in query: ['users']
+[OPTIMIZE] Knowledge Catalog available
+[OPTIMIZE] Error getting columns from KC: 'DataplexServiceClient' object has no attribute 'get_entity'
+[OPTIMIZE] Using fallback date keyword detection
+[OPTIMIZE] Found date column: creation_date
+[OPTIMIZE] Added WHERE on creation_date
+[OPTIMIZE] Added LIMIT 1000
+[OPTIMIZE] Optimized SQL: SELECT * FROM stackoverflow.users WHERE creation_date > NOW() - INTERVAL '30' DAY LIMIT 1000
+[OPTIMIZE] Modifications: ["Added WHERE on creation_date > NOW() - INTERVAL '30 days'", 'Added LIMIT 1000']
+[OPTIMIZE] Called with SQL: SELECT * FROM stackoverflow.users
+[OPTIMIZE] Dataset: stackoverflow
+[OPTIMIZE] Schema tables: ['badges', 'comments', 'post_history', 'post_links', 'posts_answers', 'posts_questions', 'tags', 'users', 'votes']
+[OPTIMIZE] Parsed successfully
+[OPTIMIZE] Looking for SELECT * ...
+[OPTIMIZE] Found SELECT *
+[OPTIMIZE] No WHERE clause found
+[OPTIMIZE] Tables in query: ['users']
+[OPTIMIZE] Knowledge Catalog available
+[OPTIMIZE] Error getting columns from KC: 'DataplexServiceClient' object has no attribute 'get_entity'
+[OPTIMIZE] Using fallback date keyword detection
+[OPTIMIZE] Found date column: creation_date
+[OPTIMIZE] Added WHERE on creation_date
+[OPTIMIZE] Added LIMIT 1000
+[OPTIMIZE] Optimized SQL: SELECT * FROM stackoverflow.users WHERE creation_date > NOW() - INTERVAL '30' DAY LIMIT 1000
+[OPTIMIZE] Modifications: ["Added WHERE on creation_date > NOW() - INTERVAL '30 days'", 'Added LIMIT 1000']
+[OPTIMIZE] Called with SQL: SELECT * FROM stackoverflow.users
+[OPTIMIZE] Dataset: stackoverflow
+[OPTIMIZE] Schema tables: ['badges', 'comments', 'post_history', 'post_links', 'posts_answers', 'posts_questions', 'tags', 'users', 'votes']
+[OPTIMIZE] Parsed successfully
+[OPTIMIZE] Looking for SELECT * ...
+[OPTIMIZE] Found SELECT *
+[OPTIMIZE] No WHERE clause found
+[OPTIMIZE] Tables in query: ['users']
+[OPTIMIZE] Knowledge Catalog available
+[OPTIMIZE] Error getting columns from KC: 'DataplexServiceClient' object has no attribute 'get_entity'
+[OPTIMIZE] Using fallback date keyword detection
+[OPTIMIZE] Found date column: creation_date
+[OPTIMIZE] Added WHERE on creation_date
+[OPTIMIZE] Added LIMIT 1000
+[OPTIMIZE] Optimized SQL: SELECT * FROM stackoverflow.users WHERE creation_date > NOW() - INTERVAL '30' DAY LIMIT 1000
+[OPTIMIZE] Modifications: ["Added WHERE on creation_date > NOW() - INTERVAL '30 days'", 'Added LIMIT 1000']
+[OPTIMIZE] Called with SQL: SELECT * FROM stackoverflow.users
+[OPTIMIZE] Dataset: stackoverflow
+[OPTIMIZE] Schema tables: ['badges', 'comments', 'post_history', 'post_links', 'posts_answers', 'posts_questions', 'tags', 'users', 'votes']
+[OPTIMIZE] Parsed successfully
+[OPTIMIZE] Looking for SELECT * ...
+[OPTIMIZE] Found SELECT *
+[OPTIMIZE] No WHERE clause found
+[OPTIMIZE] Tables in query: ['users']
+[OPTIMIZE] Knowledge Catalog available
+[OPTIMIZE] Error getting columns from KC: 'DataplexServiceClient' object has no attribute 'get_entity'
+[OPTIMIZE] Using fallback date keyword detection
+[OPTIMIZE] Found date column: creation_date
+[OPTIMIZE] Added WHERE on creation_date
+[OPTIMIZE] Added LIMIT 1000
+[OPTIMIZE] Optimized SQL: SELECT * FROM stackoverflow.users WHERE creation_date > CURRENT_TIMESTAMP() - INTERVAL '30' DAY LIMIT 1000
+[OPTIMIZE] Modifications: ['Added WHERE on creation_date > CURRENT_TIMESTAMP() - INTERVAL 30 DAY', 'Added LIMIT 1000']
+[OPTIMIZE] Called with SQL: SELECT * FROM stackoverflow.users
+[OPTIMIZE] Dataset: stackoverflow
+[OPTIMIZE] Schema tables: ['badges', 'comments', 'post_history', 'post_links', 'posts_answers', 'posts_questions', 'tags', 'users', 'votes']
+[OPTIMIZE] Parsed successfully
+[OPTIMIZE] Looking for SELECT * ...
+[OPTIMIZE] Found SELECT *
+[OPTIMIZE] No WHERE clause found
+[OPTIMIZE] Tables in query: ['users']
+[OPTIMIZE] Knowledge Catalog available
+[OPTIMIZE] Error getting columns from KC: 'DataplexServiceClient' object has no attribute 'get_entity'
+[OPTIMIZE] Using fallback date keyword detection
+[OPTIMIZE] Found date column: creation_date
+[OPTIMIZE] Added WHERE on creation_date with BigQuery-compatible interval
+[OPTIMIZE] Added LIMIT 1000
+[OPTIMIZE] Optimized SQL: SELECT * FROM stackoverflow.users WHERE creation_date > CURRENT_TIMESTAMP() - INTERVAL '30' DAY LIMIT 1000
+[OPTIMIZE] Modifications: ['Added WHERE on creation_date > CURRENT_TIMESTAMP() - INTERVAL 30 DAY', 'Added LIMIT 1000']
