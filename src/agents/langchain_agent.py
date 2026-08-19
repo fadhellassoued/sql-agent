@@ -7,7 +7,7 @@ import os
 
 def create_agent(session_id: str, schema: dict, db_repo, knowledge_catalog, llm_service, memory=None):
     llm = ChatGroq(
-        model="llama-3.1-8b-instant",
+        model="openai/gpt-oss-120b",
         temperature=0,
         api_key=os.getenv("GROQ_API_KEY")
     )
