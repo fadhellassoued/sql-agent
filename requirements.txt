@@ -3,9 +3,14 @@ uvicorn[standard]==0.34.0
 websockets==14.2
 sqlalchemy==2.0.36
 pydantic==2.10.4
+pydantic-settings>=2.6,<3
+itsdangerous>=2.2,<3
 langchain==0.3.15
+langchain-core>=0.3.31,<0.4
 langchain-google-vertexai==2.0.3
 google-cloud-bigquery==3.25.0
+google-auth>=2.35,<3
+google-auth-oauthlib>=1.2,<2
 google-cloud-aiplatform==1.76.0
 redis==5.2.1
 sqlglot==25.15.0
@@ -13,3 +18,5 @@ python-dotenv==1.0.1
 google-cloud-dataplex>=1.0.0
 langchain>=0.3.0
 langchain-groq>=0.3.0
+# Redis shared state / memory
+redis>=5.0,<6.0

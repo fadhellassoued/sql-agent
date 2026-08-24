@@ -280,3 +280,147 @@ button:disabled {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+
+/* ============================================================
+   DATABASE TYPE SELECTOR
+   ============================================================ */
+
+.database-type-selector {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  margin-bottom: 20px;
+}
+
+.database-type-selector button {
+  flex: 1;
+  padding: 14px;
+  opacity: 0.7;
+}
+
+.database-type-selector button.active {
+  opacity: 1;
+  font-weight: 700;
+  border: 2px solid currentColor;
+}
+
+
+/* ============================================================
+   SECURITY
+   ============================================================ */
+
+.security-notice {
+  padding: 16px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.security-notice p {
+  margin: 8px 0;
+}
+
+
+/* ============================================================
+   METADATA
+   ============================================================ */
+
+.metadata-explorer {
+  margin-top: 24px;
+  margin-bottom: 32px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+}
+
+.metadata-header {
+  margin-bottom: 20px;
+}
+
+.metadata-overview {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(160px, 1fr)
+    );
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.metadata-overview > div {
+  padding: 14px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+}
+
+.metadata-overview span {
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+
+.metadata-overview strong {
+  font-size: 1.1rem;
+}
+
+.metadata-table-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.metadata-table-card {
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.metadata-table-title {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.metadata-table-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 10px 16px;
+  font-size: 0.9rem;
+}
+
+.metadata-table-details {
+  padding: 16px;
+  border-top: 1px solid #ddd;
+}
+
+.metadata-columns {
+  overflow-x: auto;
+}
+
+.metadata-columns table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.metadata-columns th,
+.metadata-columns td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.connection-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.connection-actions button {
+  flex: 1;
+}

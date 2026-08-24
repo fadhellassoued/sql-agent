@@ -105,7 +105,7 @@ class KnowledgeCatalogService:
                 ))
             # Get row count and size from __TABLES__
             size_query = f"""
-                SELECT row_count, total_bytes
+                SELECT row_count, size_bytes
                 FROM `{self.project_id}.{self.dataset}.__TABLES__`
                 WHERE table_id = '{table_name}'
             """
@@ -114,7 +114,7 @@ class KnowledgeCatalogService:
             size_bytes = 0
             for size_row in size_result:
                 row_count = size_row.row_count or 0
-                size_bytes = size_row.total_bytes or 0
+                size_bytes = size_row.size_bytes or 0
 
             tables.append(Table(
                 name=table_name,

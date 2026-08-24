@@ -3,6 +3,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dotenv import load_dotenv
 from infrastructure.web.fastapi_app import create_app
+from infrastructure.security.secure_logging import install_secure_logging_filters
 
 load_dotenv()
 
