@@ -14,6 +14,7 @@ class RedisRuntimeConfig:
     conversation_ttl_seconds: int
     state_ttl_seconds: int
     metadata_ttl_seconds: int
+    catalog_ttl_seconds: int
 
     @classmethod
     def from_env(cls) -> "RedisRuntimeConfig":
@@ -48,6 +49,16 @@ class RedisRuntimeConfig:
                 os.getenv(
                     "REDIS_METADATA_TTL_SECONDS",
                     "300",
+                )
+            ),
+            # Knowledge Catalog descriptions / curated-asset relationships
+            # change far less frequently than per-query state. Fifteen minutes
+            # keeps the UI responsive while still allowing edits to propagate
+            # reasonably quickly during development.
+            catalog_ttl_seconds=int(
+                os.getenv(
+                    "REDIS_CATALOG_TTL_SECONDS",
+                    "900",
                 )
             ),
         )

@@ -72,6 +72,14 @@ from optimization.bigquery.candidate_validator import (
     BigQueryCandidateValidator,
 )
 
+from optimization.bigquery.preaggregation_semantic_validator import (
+    BigQueryPreaggregationSemanticValidator,
+)
+
+from optimization.bigquery.preaggregation_candidate_generator import (
+    BigQueryPreaggregationCandidateGenerator,
+)
+
 from optimization.bigquery.user_intent import (
     BigQueryUserIntentAnalyzer,
 )
@@ -129,6 +137,14 @@ bigquery_join_candidate_generator = (
 
 bigquery_candidate_validator = (
     BigQueryCandidateValidator()
+)
+
+bigquery_preaggregation_semantic_validator = (
+    BigQueryPreaggregationSemanticValidator()
+)
+
+bigquery_preaggregation_candidate_generator = (
+    BigQueryPreaggregationCandidateGenerator()
 )
 
 bigquery_user_intent_analyzer = (
@@ -485,6 +501,263 @@ def _short_session_id(
 
     return (
         f"{value[:8]}…"
+    )
+
+
+
+def _get_agent_catalog_alternatives(
+    strategy_agent,
+) -> dict | None:
+    """
+    Return request-scoped Knowledge Catalog alternative evidence gathered
+    by the strategist, if available.
+
+    This evidence is recommendation-only and must never be treated as an
+    approved executable rewrite.
+    """
+
+    if (
+        strategy_agent is None
+        or getattr(
+            strategy_agent,
+            "context",
+            None,
+        )
+        is None
+    ):
+        return None
+
+    evidence = getattr(
+        strategy_agent.context,
+        "catalog_alternatives",
+        None,
+    )
+
+    return (
+        evidence
+        if isinstance(
+            evidence,
+            dict,
+        )
+        else None
+    )
+
+
+def _build_catalog_recommendations(
+    *,
+    agent_plan,
+    catalog_alternatives: dict | None,
+) -> list[str]:
+    """
+    Convert verified PREAGGREGATION_REVIEW evidence into user-facing
+    recommendation text.
+
+    Safety:
+    - only uses assets actually returned by Knowledge Catalog;
+    - never generates replacement SQL;
+    - never claims semantic equivalence;
+    - never marks a recommendation as an applied optimization.
+    """
+
+    if (
+        agent_plan is None
+        or getattr(
+            agent_plan,
+            "strategy",
+            None,
+        )
+        != "PREAGGREGATION_REVIEW"
+    ):
+        return []
+
+    candidates = (
+        (catalog_alternatives or {}).get(
+            "candidates",
+            [],
+        )
+        or []
+    )
+
+    recommendations = []
+
+    for candidate in candidates[:3]:
+        candidate_name = (
+            candidate.get(
+                "fully_qualified_name"
+            )
+            or candidate.get(
+                "display_name"
+            )
+        )
+
+        if not candidate_name:
+            continue
+
+        if candidate_name.startswith(
+            "bigquery:"
+        ):
+            candidate_name = (
+                candidate_name[
+                    len("bigquery:"):
+                ]
+            )
+
+        references_source = bool(
+            candidate.get(
+                "references_source",
+                False,
+            )
+        )
+
+        relationship_text = (
+            " Its catalog metadata explicitly references the source table."
+            if references_source
+            else ""
+        )
+
+        recommendations.append(
+            (
+                "Knowledge Catalog identified "
+                f"{candidate_name} as a documented curated/pre-aggregated "
+                "asset worth evaluating for this analytical workload."
+                f"{relationship_text} "
+                "No automatic table substitution was applied because "
+                "semantic compatibility has not been proven."
+            )
+        )
+
+    return recommendations
+
+
+def _build_agent_strategy_text(
+    agent_plan,
+) -> str:
+    """
+    Compact strategist summary for the Gemini explanation layer.
+    """
+
+    if agent_plan is None:
+        return "Unavailable."
+
+    proposed_changes = (
+        getattr(
+            agent_plan,
+            "proposed_changes",
+            None,
+        )
+        or []
+    )
+
+    change_lines = []
+
+    for change in proposed_changes[:3]:
+        if hasattr(
+            change,
+            "model_dump",
+        ):
+            change = (
+                change.model_dump()
+            )
+
+        if not isinstance(
+            change,
+            dict,
+        ):
+            continue
+
+        change_lines.append(
+            (
+                f"- [{change.get('code', 'UNKNOWN')}] "
+                f"{change.get('title', 'Review opportunity')}: "
+                f"{change.get('rationale', '')}"
+            )
+        )
+
+    proposed_changes_text = (
+        "\n".join(
+            change_lines
+        )
+        if change_lines
+        else "- None."
+    )
+
+    return (
+        f"Strategy: {getattr(agent_plan, 'strategy', None)}\n"
+        f"Goal: {getattr(agent_plan, 'goal', None)}\n"
+        f"Rationale: {getattr(agent_plan, 'rationale', None)}\n"
+        f"Confidence: {getattr(agent_plan, 'confidence', None)}\n"
+        f"Candidate generation requested: "
+        f"{getattr(agent_plan, 'candidate_generation_requested', False)}\n"
+        f"Proposed review items:\n"
+        f"{proposed_changes_text}"
+    )
+
+
+def _build_catalog_alternatives_text(
+    catalog_alternatives: dict | None,
+) -> str:
+    """
+    Compact Knowledge Catalog alternative evidence for the explanation prompt.
+    """
+
+    if not catalog_alternatives:
+        return "Not collected."
+
+    candidates = (
+        catalog_alternatives.get(
+            "candidates",
+            [],
+        )
+        or []
+    )
+
+    if not candidates:
+        return (
+            "Knowledge Catalog alternative discovery ran, "
+            "but no candidate assets were found."
+        )
+
+    lines = []
+
+    for candidate in candidates[:3]:
+        candidate_name = (
+            candidate.get(
+                "fully_qualified_name"
+            )
+            or candidate.get(
+                "display_name"
+            )
+            or "Unknown asset"
+        )
+
+        description = (
+            candidate.get(
+                "description"
+            )
+            or ""
+        ).strip()
+
+        if len(description) > 320:
+            description = (
+                description[:317]
+                + "..."
+            )
+
+        lines.append(
+            (
+                f"- {candidate_name}; "
+                f"references_source="
+                f"{bool(candidate.get('references_source', False))}; "
+                f"relevance_score="
+                f"{candidate.get('relevance_score')}; "
+                f"signals="
+                f"{candidate.get('matched_keywords') or []}; "
+                f"description={description or 'Unavailable'}"
+            )
+        )
+
+    return "\n".join(
+        lines
     )
 
 
@@ -946,6 +1219,11 @@ async def websocket_endpoint(
         bigquery_join_optimization = None
 
         bigquery_join_candidate = None
+
+        bigquery_preaggregation_semantic = None
+        bigquery_preaggregation_candidate = None
+        preaggregation_semantic_time_ms = 0.0
+        preaggregation_candidate_validation_time_ms = 0.0
 
         evidence_time_ms = 0.0
 
@@ -1933,6 +2211,22 @@ async def websocket_endpoint(
             or []
         )
 
+        catalog_alternatives = (
+            _get_agent_catalog_alternatives(
+                strategy_agent
+            )
+        )
+
+        catalog_recommendations = (
+            _build_catalog_recommendations(
+                agent_plan=
+                    agent_plan,
+
+                catalog_alternatives=
+                    catalog_alternatives,
+            )
+        )
+
         recommendations = (
             _deduplicate_strings(
                 list(
@@ -1943,8 +2237,86 @@ async def websocket_endpoint(
                 list(
                     join_recommendations
                 )
+                +
+                list(
+                    catalog_recommendations
+                )
             )
         )
+
+        if catalog_recommendations:
+            print(
+                "[WebSocket] Knowledge Catalog recommendations: "
+                f"{catalog_recommendations}"
+            )
+
+        # =====================================================
+        # 9B. PRE-AGGREGATION SEMANTIC PROOF + CONTROLLED CANDIDATE
+        # =====================================================
+        if (
+            normalized_database_type == "bigquery"
+            and agent_plan is not None
+            and getattr(agent_plan, "strategy", None) == "PREAGGREGATION_REVIEW"
+            and catalog_alternatives
+        ):
+            preaggregation_semantic_start = time.perf_counter()
+            try:
+                print("[WebSocket] Running deterministic pre-aggregation semantic proof...")
+                bigquery_preaggregation_semantic = (
+                    await bigquery_preaggregation_semantic_validator.analyze(
+                        sql=query,
+                        catalog_alternatives=catalog_alternatives,
+                        client=conn_obj["client"],
+                        default_project=(conn_obj.get("project") or conn_obj.get("project_id")),
+                        default_dataset=conn_obj.get("dataset"),
+                    )
+                )
+                print(
+                    "[BigQuery Preaggregation Semantic] "
+                    f"status={bigquery_preaggregation_semantic.get('status')} | "
+                    f"candidate={bigquery_preaggregation_semantic.get('candidate_table')}"
+                )
+                bigquery_preaggregation_candidate = (
+                    bigquery_preaggregation_candidate_generator.generate(
+                        semantic_proof=bigquery_preaggregation_semantic
+                    )
+                )
+                print(
+                    "[BigQuery Preaggregation Candidate] "
+                    f"generated={bigquery_preaggregation_candidate.get('generated', False)}"
+                )
+                if bigquery_preaggregation_candidate.get("generated"):
+                    print(
+                        "[BigQuery Preaggregation Candidate] "
+                        f"sql={bigquery_preaggregation_candidate.get('candidate_sql')}"
+                    )
+            except Exception as exc:
+                print(
+                    "[WebSocket] Pre-aggregation semantic/candidate generation failed: "
+                    f"{type(exc).__name__}: {exc}"
+                )
+                bigquery_preaggregation_semantic = {
+                    "status": "ERROR",
+                    "supported": False,
+                    "reason": "Pre-aggregation semantic proof could not be completed.",
+                }
+                bigquery_preaggregation_candidate = {
+                    "generated": False,
+                    "candidate_sql": None,
+                    "rewrite_type": None,
+                    "rule_codes": [],
+                    "semantic_proof": bigquery_preaggregation_semantic,
+                    "requires_quality_gate": False,
+                    "reason": "Pre-aggregation candidate generation was unavailable.",
+                }
+            finally:
+                preaggregation_semantic_time_ms = (
+                    time.perf_counter() - preaggregation_semantic_start
+                ) * 1000
+                print(
+                    "[TIMING] Pre-aggregation semantic proof + candidate: "
+                    f"{preaggregation_semantic_time_ms:.2f} ms"
+                )
 
         semantic_proof_status = (
             (
@@ -2298,12 +2670,91 @@ async def websocket_endpoint(
             )
 
         # =====================================================
+        # 10C. BIGQUERY PRE-AGGREGATION CANDIDATE QUALITY GATE
+        # =====================================================
+        if (
+            normalized_database_type == "bigquery"
+            and bigquery_preaggregation_candidate
+            and bigquery_preaggregation_candidate.get("generated")
+        ):
+            print("[WebSocket] Validating BigQuery pre-aggregation candidate...")
+            preaggregation_candidate_validation_start = time.perf_counter()
+            try:
+                preaggregation_quality_gate = await bigquery_candidate_validator.compare(
+                    repository=db_repo,
+                    original_sql=query,
+                    candidate_sql=bigquery_preaggregation_candidate["candidate_sql"],
+                    original_estimate={
+                        "bytes_processed": bytes_processed,
+                        "estimated_cost_usd": estimated_cost_usd,
+                        "scan_type": scan_type,
+                    },
+                    allow_runtime_validation=False,
+                    execute_runtime_validation=False,
+                )
+                bigquery_preaggregation_candidate["quality_gate"] = preaggregation_quality_gate
+                bigquery_preaggregation_candidate["original_query"] = query
+                bigquery_preaggregation_candidate["candidate_query"] = bigquery_preaggregation_candidate["candidate_sql"]
+                preaggregation_decision = preaggregation_quality_gate.get("decision")
+                print(
+                    "[BigQuery Preaggregation Candidate] "
+                    f"quality_gate={preaggregation_decision}"
+                )
+
+                if preaggregation_decision in {"APPROVE_SCAN_COST", "APPROVE_RUNTIME_IMPROVEMENT"}:
+                    optimized_sql = bigquery_preaggregation_candidate["candidate_sql"]
+                    changed = True
+                    normalized = False
+                    for rule_code in (bigquery_preaggregation_candidate.get("rule_codes", []) or []):
+                        if rule_code not in rules_applied:
+                            rules_applied.append(rule_code)
+                    candidate_metrics = preaggregation_quality_gate.get("candidate", {}) or {}
+                    if candidate_metrics.get("bytes_processed") is not None:
+                        bytes_processed = candidate_metrics["bytes_processed"]
+                    if candidate_metrics.get("estimated_cost_usd") is not None:
+                        estimated_cost_usd = candidate_metrics["estimated_cost_usd"]
+                    recommendations = [
+                        recommendation
+                        for recommendation in recommendations
+                        if "no automatic table substitution was applied" not in recommendation.lower()
+                    ]
+            except Exception as exc:
+                print(
+                    "[WebSocket] BigQuery pre-aggregation candidate validation failed: "
+                    f"{exc}"
+                )
+                bigquery_preaggregation_candidate["quality_gate"] = {
+                    "decision": "REJECT_VALIDATION_ERROR",
+                    "approved": False,
+                    "reason": "The pre-aggregation candidate could not be validated by BigQuery.",
+                }
+
+            preaggregation_candidate_validation_time_ms = (
+                time.perf_counter() - preaggregation_candidate_validation_start
+            ) * 1000
+            print(
+                "[TIMING] BigQuery pre-aggregation candidate validation: "
+                f"{preaggregation_candidate_validation_time_ms:.2f} ms"
+            )
+
+        # =====================================================
         # 11. OPTIMIZATION STATUS
         # =====================================================
 
         candidate_gate_decision = None
 
+        preaggregation_gate_decision = (
+            ((bigquery_preaggregation_candidate.get("quality_gate", {}) or {}).get("decision"))
+            if (bigquery_preaggregation_candidate and bigquery_preaggregation_candidate.get("generated"))
+            else None
+        )
+
+        if preaggregation_gate_decision is not None:
+            candidate_gate_decision = preaggregation_gate_decision
+
         if (
+            candidate_gate_decision is None
+            and
             bigquery_join_candidate
             and
             bigquery_join_candidate.get(
@@ -2405,6 +2856,27 @@ async def websocket_endpoint(
                 "NEEDS_USER_INTENT"
             )
 
+        elif (
+            agent_plan is not None
+            and
+            getattr(
+                agent_plan,
+                "strategy",
+                None,
+            )
+            ==
+            "PREAGGREGATION_REVIEW"
+            and
+            catalog_recommendations
+        ):
+
+            # A real optimization opportunity was discovered, but it is
+            # recommendation-only because semantic compatibility with the
+            # alternative asset has not been proven.
+            optimization_status = (
+                "RECOMMENDATIONS_ONLY"
+            )
+
         elif has_recommendation_only_opportunity:
 
             optimization_status = (
@@ -2452,11 +2924,9 @@ async def websocket_endpoint(
 
                     "has_candidate":
                         bool(
-                            bigquery_join_candidate
-                            and
-                            bigquery_join_candidate.get(
-                                "generated"
-                            )
+                            (bigquery_join_candidate and bigquery_join_candidate.get("generated"))
+                            or
+                            (bigquery_preaggregation_candidate and bigquery_preaggregation_candidate.get("generated"))
                         ),
 
                     "candidate_gate_decision":
@@ -2498,6 +2968,13 @@ async def websocket_endpoint(
                                 or
                                 strategy_agent.context.join_optimization
                                 is not None
+                                or
+                                getattr(
+                                    strategy_agent.context,
+                                    "catalog_alternatives",
+                                    None,
+                                )
+                                is not None
                             )
                         ),
                 },
@@ -2517,45 +2994,23 @@ async def websocket_endpoint(
                     )
                 )
 
-            if (
-                bigquery_join_candidate
-                and
-                bigquery_join_candidate.get(
-                    "generated"
-                )
-            ):
+            persisted_candidate = None
+            if (bigquery_preaggregation_candidate and bigquery_preaggregation_candidate.get("generated")):
+                persisted_candidate = bigquery_preaggregation_candidate
+            elif (bigquery_join_candidate and bigquery_join_candidate.get("generated")):
+                persisted_candidate = bigquery_join_candidate
+
+            if persisted_candidate is not None:
                 candidate_store.save(
                     session_id,
                     "current",
                     {
-                        "rewrite_type":
-                            bigquery_join_candidate.get(
-                                "rewrite_type"
-                            ),
-
-                        "rule_codes":
-                            bigquery_join_candidate.get(
-                                "rule_codes",
-                                [],
-                            ),
-
-                        "semantic_proof":
-                            bigquery_join_candidate.get(
-                                "semantic_proof"
-                            ),
-
-                        "quality_gate":
-                            bigquery_join_candidate.get(
-                                "quality_gate"
-                            ),
-
-                        "original_query":
-                            query,
-
-                        "candidate_query":
-                            bigquery_join_candidate.get(
-                                "candidate_sql"
-                            ),
+                        "rewrite_type": persisted_candidate.get("rewrite_type"),
+                        "rule_codes": persisted_candidate.get("rule_codes", []),
+                        "semantic_proof": persisted_candidate.get("semantic_proof"),
+                        "quality_gate": persisted_candidate.get("quality_gate"),
+                        "original_query": query,
+                        "candidate_query": persisted_candidate.get("candidate_sql"),
                     },
                 )
             else:
@@ -2603,6 +3058,27 @@ async def websocket_endpoint(
                 (
                     agent_plan.model_dump()
                     if agent_plan is not None
+                    else None
+                ),
+
+            "knowledge_catalog_alternatives":
+                (
+                    catalog_alternatives
+                    if normalized_database_type == "bigquery"
+                    else None
+                ),
+
+            "bigquery_preaggregation_semantic":
+                (
+                    bigquery_preaggregation_semantic
+                    if normalized_database_type == "bigquery"
+                    else None
+                ),
+
+            "bigquery_preaggregation_candidate":
+                (
+                    bigquery_preaggregation_candidate
+                    if normalized_database_type == "bigquery"
                     else None
                 ),
 
@@ -3407,6 +3883,44 @@ LIMIT: {structure.limit_value if structure.has_limit else "None"}
                 )
 
         # -----------------------------------------------------
+        # BIGQUERY PRE-AGGREGATION CANDIDATE SUMMARY
+        # -----------------------------------------------------
+        bigquery_preaggregation_candidate_text = "Not applicable."
+        if normalized_database_type == "bigquery" and bigquery_preaggregation_candidate:
+            preagg_gate = bigquery_preaggregation_candidate.get("quality_gate", {}) or {}
+            preagg_proof = bigquery_preaggregation_candidate.get("semantic_proof", {}) or {}
+            preagg_original = preagg_gate.get("original", {}) or {}
+            preagg_candidate_metrics = preagg_gate.get("candidate", {}) or {}
+            preagg_savings = preagg_gate.get("savings", {}) or {}
+            bigquery_preaggregation_candidate_text = (
+                f"Candidate generated: {bigquery_preaggregation_candidate.get('generated', False)}\n"
+                f"Candidate SQL: {bigquery_preaggregation_candidate.get('candidate_sql')}\n"
+                f"Semantic proof status: {preagg_proof.get('status')}\n"
+                f"Semantic proof basis: {preagg_proof.get('proof_basis', 'Unavailable')}\n"
+                f"Quality-gate decision: {preagg_gate.get('decision', 'NOT_RUN')}\n"
+                f"Original dry-run bytes: {preagg_original.get('bytes_processed')}\n"
+                f"Candidate dry-run bytes: {preagg_candidate_metrics.get('bytes_processed')}\n"
+                f"Scan reduction percent: {preagg_savings.get('reduction_percent')}\n"
+                f"Quality-gate reason: {preagg_gate.get('reason', 'Unavailable')}"
+            )
+
+        # -----------------------------------------------------
+        # AGENT STRATEGY + KNOWLEDGE CATALOG ALTERNATIVES
+        # -----------------------------------------------------
+
+        agent_strategy_text = (
+            _build_agent_strategy_text(
+                agent_plan
+            )
+        )
+
+        catalog_alternatives_text = (
+            _build_catalog_alternatives_text(
+                catalog_alternatives
+            )
+        )
+
+        # -----------------------------------------------------
         # COST EVIDENCE
         # -----------------------------------------------------
 
@@ -3455,6 +3969,15 @@ Current backend SQL after approved rewrites (otherwise normalized/original):
 
 Optimization status:
 {optimization_status}
+
+Agent strategy:
+{agent_strategy_text}
+
+Knowledge Catalog alternative evidence:
+{catalog_alternatives_text}
+
+BigQuery pre-aggregation semantic proof / candidate / quality gate:
+{bigquery_preaggregation_candidate_text}
 
 SQL normalization:
 {normalization_text}
@@ -3680,6 +4203,24 @@ IMPORTANT RULES:
 - RECOMMENDATIONS_ONLY means analysis found review opportunities but no
   validated executable rewrite is currently approved.
 
+- If Agent strategy is PREAGGREGATION_REVIEW and Knowledge Catalog alternative
+  evidence contains a candidate, explain that Catalog discovered the asset.
+  Then use the separate pre-aggregation semantic-proof / quality-gate evidence
+  to determine whether it stayed recommendation-only or became approved.
+
+- A Knowledge Catalog alternative by itself is NOT proof of semantic
+  equivalence. Only deterministic semantic proof with status
+  PROVEN_FOR_SUPPORTED_PREAGGREGATION_PATTERN establishes compatibility for
+  the narrowly supported pattern.
+
+- If the pre-aggregation quality-gate decision is APPROVE_SCAN_COST or
+  APPROVE_RUNTIME_IMPROVEMENT, describe the controlled substitution as an
+  approved optimization and cite the measured dry-run reduction. Do NOT say
+  that no automatic substitution was made.
+
+- If semantic proof is NOT_PROVEN/ERROR or the candidate is not approved, keep
+  the Catalog alternative recommendation-only.
+
 - NEEDS_USER_INTENT means the optimizer requires user/application semantics
   before a safe candidate can be created.
 
@@ -3697,6 +4238,15 @@ Maximum 180 words.
         # 15. STREAM GEMINI EXPLANATION
         # =====================================================
 
+        print(
+            "[TIMING][Gemini Explanation Prompt] "
+            f"chars={len(explanation_prompt)}"
+        )
+
+        explanation_first_token_ms = None
+        explanation_chunk_count = 0
+        explanation_character_count = 0
+
         try:
 
             async for chunk in (
@@ -3708,6 +4258,18 @@ Maximum 180 words.
                 if not chunk:
 
                     continue
+
+                if explanation_first_token_ms is None:
+                    explanation_first_token_ms = (
+                        time.perf_counter() - explanation_start
+                    ) * 1000.0
+                    print(
+                        "[TIMING][Gemini Explanation] "
+                        f"first_token={explanation_first_token_ms:.2f} ms"
+                    )
+
+                explanation_chunk_count += 1
+                explanation_character_count += len(chunk)
 
                 explanation += (
                     chunk
@@ -3751,6 +4313,14 @@ Maximum 180 words.
             -
             explanation_start
         ) * 1000
+
+        print(
+            "[TIMING][Gemini Explanation Summary] "
+            f"first_token={explanation_first_token_ms} ms "
+            f"total={explanation_time_ms:.2f} ms "
+            f"chunks={explanation_chunk_count} "
+            f"chars={explanation_character_count}"
+        )
 
         print(
             "[TIMING] Gemini explanation: "
